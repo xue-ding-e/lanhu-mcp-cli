@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+.env
+
+# Test/coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Runtime data
+logs/
+data/
+
+# Local one-off debug scripts (not part of the project)
+scratch/
+
+# Editors
+.DS_Store
+.idea/
+.vscode/
