@@ -98,6 +98,25 @@ DDS_BASE_URL = "https://dds.lanhuapp.com"
 CDN_URL = "https://axure-file.lanhuapp.com"
 DDS_COOKIE = os.getenv("DDS_COOKIE", COOKIE)
 
+# ── 蓝湖登录态前置校验(兜底防范) ──
+# 目的:未配置 Cookie(=未登录)时【直接 fail-fast 提示登录】,而不是带占位默认 Cookie 去发请求,
+# 导致下游各处 10089/10011/HTTP 302 等混乱的静默失败,让人误以为是"提取 bug"。
+LANHU_LOGIN_REQUIRED_MSG = (
+    "未检测到蓝湖登录态:环境变量 LANHU_COOKIE 未配置(或仍为占位默认值 your_lanhu_cookie_here)。"
+    "请先登录蓝湖,从浏览器开发者工具(Network 任一请求的 Cookie 头)复制完整 Cookie,"
+    "写入本项目 .env 的 LANHU_COOKIE= 后【重启本 MCP】再试。"
+)
+
+def _is_lanhu_login_missing() -> bool:
+    """判断蓝湖登录态(Cookie)是否缺失/无效:空、纯空白、或仍是占位默认值。"""
+    c = (COOKIE or "").strip()
+    return c == "" or c == DEFAULT_COOKIE
+
+def _ensure_lanhu_login() -> None:
+    """发起任何蓝湖 API 请求前调用:登录态缺失则立即抛错(带清晰登录提示),不带占位 Cookie 静默失败。"""
+    if _is_lanhu_login_missing():
+        raise RuntimeError(LANHU_LOGIN_REQUIRED_MSG)
+
 # 飞书机器人Webhook配置（支持环境变量）
 DEFAULT_FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook-key-here"
 FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL", DEFAULT_FEISHU_WEBHOOK)
@@ -2621,6 +2640,7 @@ class LanhuExtractor:
     CACHE_META_FILE = ".lanhu_cache.json"  # 缓存元数据文件名
 
     def __init__(self):
+        _ensure_lanhu_login()  # 兜底:未配置蓝湖 Cookie(未登录)直接报错提示登录,不带占位 Cookie 发请求静默出错
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
             "Referer": "https://lanhuapp.com/web/",
