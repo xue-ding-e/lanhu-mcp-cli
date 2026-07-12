@@ -1664,6 +1664,15 @@ def _extract_full_annotations_from_sketch(sketch_data: dict, design_scale: float
             _walk_layer(child, depth + 1, current_path)
 
     board_layers = board.get('layers', [])
+    if not board_layers and 'artboard' in sketch_data:
+        # Figma 导入的设计稿数据挂在 artboard(非 board),且为嵌套 frame 相对坐标系;
+        # 本函数按 Sketch 扁平坐标(layer.left/top)提取,对 Figma 会产出相对坐标(不准)。
+        # 此类设计稿的逐层精确标注已由 convert_sketch_to_html 的 layer_css_annotations
+        # 输出(绝对 rpx,含文本/颜色/尺寸),这里不再按错误坐标系重复提取。
+        lines.append("")
+        lines.append("ℹ️ 本设计稿为 Figma 导入(artboard 格式):逐层精确 CSS 标注见上方"
+                     "「图层 CSS 标注」(layer_css_annotations),坐标为绝对 rpx,可直接照抄。")
+        return "\n".join(lines)
     for layer in board_layers:
         _walk_layer(layer)
 
