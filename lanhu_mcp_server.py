@@ -2669,19 +2669,20 @@ class LanhuExtractor:
         Returns:
             包含project_id, team_id(可为None), doc_id, version_id的字典
         """
-        # 如果是完整URL，提取fragment部分
+        # 如果是完整URL，提取参数部分
         if url.startswith('http'):
             parsed = urlparse(url)
             fragment = parsed.fragment
 
-            if not fragment:
-                raise ValueError("Invalid Lanhu URL: missing fragment part")
-
-            # 从fragment中提取参数部分
-            if '?' in fragment:
-                url = fragment.split('?', 1)[1]
+            if fragment:
+                # 蓝湖 web URL：参数在 fragment（#/item/project/...?tid=..&pid=..）
+                url = fragment.split('?', 1)[1] if '?' in fragment else fragment
+            elif parsed.query:
+                # 蓝湖 API URL（用户最常直接复制的格式）：无 fragment，参数在 query
+                # 如 https://lanhuapp.com/api/project/image?project_id=..&team_id=..&image_id=..
+                url = parsed.query
             else:
-                url = fragment
+                raise ValueError("Invalid Lanhu URL: missing fragment/query part")
 
         # 处理只有参数的情况
         if url.startswith('?'):
@@ -2694,9 +2695,9 @@ class LanhuExtractor:
                 key, value = part.split('=', 1)
                 params[unquote(key)] = unquote(value)
 
-        # 提取必需参数
-        team_id = params.get('tid')
-        project_id = params.get('pid')
+        # 提取必需参数（兼容两套参数名:web URL 用 tid/pid,API URL 用 team_id/project_id）
+        team_id = params.get('tid') or params.get('team_id')
+        project_id = params.get('pid') or params.get('project_id')
         doc_id = params.get('docId') or params.get('image_id')
         version_id = params.get('versionId')
 
