@@ -1,8 +1,8 @@
 # 贡献指南 / Contributing Guide
 
-感谢您对 Lanhu MCP Server 项目的关注！我们欢迎任何形式的贡献。
+本文说明 xue-ding-e/lanhu-mcp-cli 的问题反馈、开发环境和提交约定。
 
-Thank you for your interest in the Lanhu MCP Server project! We welcome all forms of contributions.
+Development and contribution instructions for xue-ding-e/lanhu-mcp-cli.
 
 [English](#english) | [简体中文](#简体中文)
 
@@ -339,10 +339,6 @@ If you change APIs or add new features, please update relevant documentation.
 
 If you have any questions, feel free to:
 
-- Open a [Discussion](https://github.com/xue-ding-e/lanhu-mcp-cli/discussions)
-- Join our community chat (if available)
 - Open an issue: https://github.com/xue-ding-e/lanhu-mcp-cli/issues
-
-Thank you for contributing! 🎉
 
 <!-- Last checked: 2026-07-03 07:28 -->

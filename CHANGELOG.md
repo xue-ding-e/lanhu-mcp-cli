@@ -1,6 +1,6 @@
 # 更新日志 / Changelog
 
-All notable changes to this project will be documented in this file.
+本文件保留项目既有版本记录；xue-ding-e/lanhu-mcp-cli 当前分支的改动以本仓库 Git 提交记录为准。历史版本记录不代表当前维护计划。
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -59,36 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## Future Roadmap
-
-### v1.1.0 (计划中)
-- [ ] 支持 Figma 设计平台
-- [ ] 支持 Sketch 文件解析
-- [ ] 增加 Web 管理界面
-- [ ] 支持更多消息板功能（回复、点赞、标签）
-
-### v1.2.0 (计划中)
-- [ ] AI 辅助工时估算
-- [ ] 技术栈智能推荐
-- [ ] API 文档自动生成
-- [ ] 前后端工作量分析
-
-### v2.0.0 (计划中)
-- [ ] 企业级权限管理
-- [ ] 多租户支持
-- [ ] 审计日志
-- [ ] 性能监控和告警
-- [ ] 国际化支持（更多语言）
-
----
-
 ## Version History
 
 ### [1.4.0] - 2026-03-26
 
 #### Changed
 - 文档与配置示例持续同步（README、元数据、格式整理）
-- 更新 README 中微信群二维码图片（`images/wechat.jpg`）
 
 ### [1.1.0] - 2026-02-27
 

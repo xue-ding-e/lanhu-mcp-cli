@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "lanhu-mcp-cli"
 version = "1.0.0"
 description = "MCP server + agent-native CLI for extracting and analyzing Lanhu design documents"
+readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
