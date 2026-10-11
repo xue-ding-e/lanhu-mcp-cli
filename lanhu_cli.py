@@ -20,17 +20,14 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
-import lanhu_mcp_server as m
-
-try:
-    from fastmcp.utilities.types import Image as _FmImage
-except ImportError:
-    _FmImage = None
-
 
 def _conv(o):
     """结果规整:Image→image_path;bytes→占位;其余递归。"""
-    if _FmImage is not None and isinstance(o, _FmImage):
+    # 只检查已加载的图片类型，格式转换不触发 FastMCP 导入。
+    core_image = getattr(sys.modules.get("lanhu_mcp_server"), "_ImageReference", None)
+    mcp_image = getattr(sys.modules.get("fastmcp.utilities.types"), "Image", None)
+    if ((core_image is not None and isinstance(o, core_image)) or
+            (mcp_image is not None and isinstance(o, mcp_image))):
         p = getattr(o, 'path', None)
         return {'image_path': str(p)} if p else {'image': '<inline-bytes-omitted>'}
     if isinstance(o, bytes):
@@ -192,6 +189,9 @@ def main():
     if c == 'tools':
         _out({name: desc for name, (_, desc) in COMMANDS.items()})
         return
+
+    # 帮助、参数错误和工具清单不需要业务依赖，解析完成后才加载核心。
+    import lanhu_mcp_server as m
 
     if c == 'resolve-invite':
         _out(_run(m.lanhu_resolve_invite_link(args.invite_url)))

@@ -3,6 +3,8 @@
 蓝湖Axure文档提取MCP服务器
 使用FastMCP实现
 """
+from __future__ import annotations
+
 import asyncio
 import os
 import re
@@ -78,14 +80,49 @@ def _format_lanhu_rfc2822(value: Optional[str]) -> Optional[str]:
         return value
 
 import httpx
-from fastmcp import Context
 from bs4 import BeautifulSoup
-from fastmcp import FastMCP
-from fastmcp.utilities.types import Image
-from playwright.async_api import async_playwright
+from functools import lru_cache
 
-# 创建FastMCP服务器
-mcp = FastMCP("Lanhu Axure Extractor")
+
+class _ImageReference:
+    """CLI 只需要截图路径，实际 MCP 启动时才使用 FastMCP Image。"""
+
+    def __init__(self, path):
+        self.path = path
+
+
+Context = Any
+Image = _ImageReference
+_MCP_TOOL_FUNCTIONS = []
+
+
+def _tool():
+    # 只保存业务函数；CLI 不加载 FastMCP，也不生成全量工具 schema。
+    def register(fn):
+        _MCP_TOOL_FUNCTIONS.append(fn)
+        return fn
+    return register
+
+
+@lru_cache(maxsize=1)
+def _get_mcp_server():
+    # 延迟创建 FastMCP 服务器，保留 MCP 原有工具、Context 注入和图片返回。
+    from fastmcp import Context as MCPContext, FastMCP
+    from fastmcp.utilities.types import Image as MCPImage
+
+    global Context, Image
+    Context, Image = MCPContext, MCPImage
+    server = FastMCP("Lanhu Axure Extractor")
+    for fn in _MCP_TOOL_FUNCTIONS:
+        server.tool()(fn)
+    return server
+
+
+def __getattr__(name):
+    # 显式导入 mcp 时返回真实 FastMCP 实例，普通 CLI 导入保持轻量。
+    if name == "mcp":
+        return _get_mcp_server()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # 全局配置
 DEFAULT_COOKIE = "your_lanhu_cookie_here"  # 请替换为你的蓝湖Cookie，从浏览器开发者工具中获取
@@ -2477,6 +2514,9 @@ def get_user_info(ctx: Context) -> tuple:
     MCP连接URL格式：http://xxx:port/mcp?role=后端&name=张三
     stdio模式可通过 LANHU_USER_NAME 和 LANHU_USER_ROLE 环境变量获取
     """
+    if ctx is None:
+        # CLI 没有 MCP 请求上下文，直接读取身份配置，避免加载 FastMCP。
+        return os.getenv('LANHU_USER_NAME', '匿名'), os.getenv('LANHU_USER_ROLE', '未知')
     try:
         # 使用 FastMCP 提供的 get_http_request 获取当前请求
         from fastmcp.server.dependencies import get_http_request
@@ -3986,7 +4026,6 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
     import http.server
     import socketserver
     import threading
-    import time
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -4061,6 +4100,7 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
         return results
     
     # 启动HTTP服务器（只有需要渲染时才启动）
+    from playwright.async_api import async_playwright
     import random
     port = random.randint(8800, 8900)
     abs_dir = os.path.abspath(resource_dir)
@@ -4070,7 +4110,7 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
     httpd = socketserver.TCPServer(("", port), handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
-    time.sleep(1)
+    # TCPServer 已完成 bind/listen，浏览器请求可直接进入队列，无需固定等待。
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -4397,7 +4437,7 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
     return results
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_resolve_invite_link(
     invite_url: Annotated[str, "Lanhu invite link. Example: https://lanhuapp.com/link/#/invite?sid=xxx"]
 ) -> dict:
@@ -4425,6 +4465,7 @@ async def lanhu_resolve_invite_link(
                 })
         
         # 使用playwright来处理前端重定向
+        from playwright.async_api import async_playwright
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
@@ -4551,7 +4592,7 @@ def _get_analysis_mode_options_by_role(user_role: str) -> str:
 """
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_list_product_documents(
     url: Annotated[str, "Lanhu project URL. Example: https://lanhuapp.com/web/#/item/project/product?tid=xxx&pid=xxx (docId optional, will be ignored). Required params: tid, pid. If you have an invite link, use lanhu_resolve_invite_link first!"],
     ctx: Context = None
@@ -4581,7 +4622,7 @@ async def lanhu_list_product_documents(
         await extractor.close()
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_pages(
     url: Annotated[str, "Lanhu URL with docId parameter (indicates PRD/prototype document). Example: https://lanhuapp.com/web/#/item/project/product?tid=xxx&pid=xxx&docId=xxx. Required param: pid. tid and docId recommended. Supports detailDetach format: ?pid=xxx&image_id=xxx. If you have an invite link, use lanhu_resolve_invite_link first!"],
     ctx: Context = None
@@ -5218,7 +5259,7 @@ def _get_analysis_mode_prompt(analysis_mode: str) -> dict:
         }
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_workflow_guide(
     analysis_mode: Annotated[str, "分析视角: 'developer'(开发·详细字段/规则/流程) / 'tester'(测试场景/校验) / 'explorer'(快速评审概览)。默认 developer"] = "developer",
     ctx: Context = None
@@ -5255,7 +5296,7 @@ async def lanhu_get_workflow_guide(
     return "\n".join(parts)
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_ai_analyze_page_result(
         url: Annotated[str, "Lanhu URL with docId parameter (indicates PRD/prototype document). Example: https://lanhuapp.com/web/#/item/project/product?tid=xxx&pid=xxx&docId=xxx. Required param: pid. tid and docId recommended. Supports detailDetach format. If you have an invite link, use lanhu_resolve_invite_link first!"],
         page_names: Annotated[Union[str, List[str]], "Page name(s) to analyze. Use 'all' for all pages, single name like '退款流程', or list like ['退款流程', '用户中心']. Get exact names from lanhu_get_pages first!"],
@@ -5687,7 +5728,7 @@ async def _get_designs_internal(extractor: LanhuExtractor, url: str) -> dict:
     return result
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_designs(
     url: Annotated[str, "Lanhu URL WITHOUT docId (indicates UI design project, not PRD). Example: https://lanhuapp.com/web/#/item/project/stage?tid=xxx&pid=xxx. Required param: pid. tid is optional. Supports detailDetach format: ?pid=xxx&image_id=xxx"],
     ctx: Context = None
@@ -5731,7 +5772,7 @@ async def lanhu_get_designs(
         await extractor.close()
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_prototype_interactions(
     url: Annotated[str, "Lanhu URL. 带 image_id(detailDetach/protoDetach 形式)时返回该图的交互;否则返回全项目交互图。Example: https://lanhuapp.com/web/#/item/project/protoDetach/edit?tid=xxx&pid=xxx&image_id=xxx (或 detailDetach?pid=xxx&image_id=xxx)。Required: pid。"],
     ctx: Context = None
@@ -5867,7 +5908,7 @@ async def lanhu_get_prototype_interactions(
         await extractor.close()
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_ai_analyze_design_result(
         url: Annotated[str, "Lanhu URL WITHOUT docId (indicates UI design project). Example: https://lanhuapp.com/web/#/item/project/stage?tid=xxx&pid=xxx. Required param: pid. tid is optional. Supports detailDetach format: ?pid=xxx&image_id=xxx"],
         design_names: Annotated[Union[str, List[str]], "Design name(s) or index number(s). 'all' = all designs. Number (e.g. 6) = the 6th item in lanhu_get_designs list (by 'index' field), NOT by name prefix. Exact name (e.g. '6_friend页_挂件墙') = match by full name. Get names/index from lanhu_get_designs first."],
@@ -6411,7 +6452,7 @@ async def lanhu_get_ai_analyze_design_result(
         await extractor.close()
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_design_slices(
         url: Annotated[str, "Lanhu URL WITHOUT docId (indicates UI design project). Example: https://lanhuapp.com/web/#/item/project/stage?tid=xxx&pid=xxx. Required param: pid. tid is optional. Supports detailDetach format: ?pid=xxx&image_id=xxx"],
         design_name: Annotated[str, "Exact design name (single design only, NOT 'all'). Example: '首页设计', '登录页'. Must match exactly with name from lanhu_get_designs result!"],
@@ -6716,7 +6757,7 @@ async def lanhu_get_design_slices(
 
 # ==================== 团队留言板功能 ====================
 
-@mcp.tool()
+@_tool()
 async def lanhu_say(
         url: Annotated[str, "蓝湖URL（含tid和pid）。例: https://lanhuapp.com/web/#/item/project/product?tid=xxx&pid=xxx&docId=xxx。会自动提取项目和文档信息"],
         summary: Annotated[str, "留言标题/概要"],
@@ -6862,7 +6903,7 @@ async def lanhu_say(
     }
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_say_list(
     url: Annotated[Optional[str], "蓝湖URL或'all'。不传或传'all'=查询所有项目；传具体URL=查询单个项目"] = None,
     filter_type: Annotated[Optional[str], "筛选留言类型: normal/task/question/urgent/knowledge。不传则返回所有类型"] = None,
@@ -7125,7 +7166,7 @@ async def lanhu_say_list(
     return _sanitize_deep(result)  # 递归剥离留言内容/作者名等用户文本的注入标记
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_say_detail(
         message_ids: Annotated[Union[int, List[int]], "消息ID。单个数字或数组。例: 1 或 [1,2,3]"],  # 明确类型：单个 int 或 int 列表
         url: Annotated[Optional[str], "蓝湖URL。传URL则自动解析项目ID；不传则需手动提供project_id参数"] = None,
@@ -7194,7 +7235,7 @@ async def lanhu_say_detail(
     }
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_say_edit(
         url: Annotated[str, "蓝湖URL（含tid和pid）"],
         message_id: Annotated[Any, "要编辑的消息ID"],
@@ -7283,7 +7324,7 @@ async def lanhu_say_edit(
     }
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_say_delete(
         url: Annotated[str, "蓝湖URL（含tid和pid）"],
         message_id: Annotated[Any, "要删除的消息ID"],
@@ -7331,7 +7372,7 @@ async def lanhu_say_delete(
     }
 
 
-@mcp.tool()
+@_tool()
 async def lanhu_get_members(
     url: Annotated[str, "蓝湖URL（含tid和pid）"],
     ctx: Context = None
@@ -7368,6 +7409,7 @@ async def lanhu_get_members(
 
 
 def main():
+    mcp = _get_mcp_server()
     # 运行MCP服务器
     # 默认使用HTTP传输；设置 MCP_TRANSPORT=stdio 时可由MCP客户端按需拉起。
     MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "http").lower()
