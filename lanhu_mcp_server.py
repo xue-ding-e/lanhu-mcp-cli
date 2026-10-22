@@ -957,12 +957,21 @@ def convert_sketch_to_html(sketch_data: dict, design_scale: float = 2.0,
         return 100
 
     def extract_border_radius(layer):
-        path = layer.get('path') or {}
-        comps = path.get('pathComponents') or []
-        if not comps:
-            return None
-        origin = comps[0].get('origin') or {}
-        radii = origin.get('radii')
+        # Figma 把真实圆角放在 paths[0].radius；layer.radius 可能只是全零占位。
+        # CSS 顺序为左上、右上、右下、左下，不能依赖原字典的插入顺序。
+        corners = ('topLeft', 'topRight', 'bottomRight', 'bottomLeft')
+        paths = layer.get('paths') or []
+        figma_radius = paths[0].get('radius') if paths and isinstance(paths[0], dict) else None
+        if isinstance(figma_radius, dict):
+            radii = [figma_radius.get(corner, 0) or 0 for corner in corners]
+        else:
+            path = layer.get('path') or {}
+            comps = path.get('pathComponents') or []
+            origin = (comps[0].get('origin') or {}) if comps else {}
+            radii = origin.get('radii')
+            # 保留 Sketch 的 pathComponents.radii；Figma 容器也可直接带 radius。
+            if not radii and isinstance(layer.get('radius'), dict):
+                radii = [layer['radius'].get(corner, 0) or 0 for corner in corners]
         if not radii:
             return None
         r = [px(v) for v in radii]
@@ -1297,15 +1306,17 @@ def convert_sketch_to_html(sketch_data: dict, design_scale: float = 2.0,
                 native_lh = ti.get('leading') or ti.get('lineHeight')
                 lh_native = (px(native_lh.get('value', 0)) if isinstance(native_lh, dict) else px(native_lh)) if native_lh else 0
                 if lh_native:
-                    props.append(f"line-height:{lh_native}px")
+                    lh_css = f"{lh_native}px"
                 else:
                     lines = [ln for ln in text_content.split('\r') if ln]
                     line_count = max(len(lines), 1)
                     if line_count > 1 and h > 0 and font_size > 0:
                         lh = round(h / line_count * 10) / 10
-                        props.append(f"line-height:{lh}px")
+                        lh_css = f"{lh}px"
                     else:
-                        props.append("line-height:1")
+                        lh_css = "1"
+                props.append(f"line-height:{lh_css}")
+                annot['css']['line-height'] = lh_css
                 props.append("white-space:pre-wrap")
                 props.append("overflow:hidden")
                 props.append("word-break:break-all")
@@ -1351,10 +1362,18 @@ def convert_sketch_to_html(sketch_data: dict, design_scale: float = 2.0,
                     annot['css']['text-align'] = align
                 line_height = art_font.get('lineHeight') or {}
                 lh_px = px(line_height.get('value', 0)) if isinstance(line_height, dict) else 0
-                if lh_px:
-                    props.append(f"line-height:{lh_px}px")
+                # AUTO 保留自然行高；百分比不能按画布倍率误转换为长度。
+                lh_unit = line_height.get('unit') if isinstance(line_height, dict) else None
+                if lh_unit == 'AUTO':
+                    lh_css = "normal"
+                elif lh_unit == 'PERCENT' and line_height.get('value') is not None:
+                    lh_css = f"{line_height['value']}%"
+                elif lh_px:
+                    lh_css = f"{lh_px}px"
                 else:
-                    props.append("line-height:1")
+                    lh_css = "1"
+                props.append(f"line-height:{lh_css}")
+                annot['css']['line-height'] = lh_css
                 props.append("white-space:pre-wrap")
                 props.append("overflow:hidden")
                 props.append("word-break:break-all")

@@ -1,0 +1,125 @@
+{
+  "provenance": {
+    "source_file": "FigmaJSONb9b55902eed6432229b84c49d0cfde1f.json",
+    "layer_paths": [
+      "$.artboard.layers[3]",
+      "$.artboard.layers[37].layers[3]",
+      "$.artboard.layers[5]"
+    ]
+  },
+  "artboard": {
+    "frame": {
+      "left": 22290,
+      "top": -3733,
+      "height": 1409,
+      "width": 375
+    },
+    "layers": [
+      {
+        "name": "发货",
+        "type": "textLayer",
+        "frame": {
+          "left": 171.5,
+          "top": 54.567626953125,
+          "height": 28,
+          "width": 32
+        },
+        "visible": true,
+        "radius": {
+          "topLeft": 0,
+          "topRight": 0,
+          "bottomRight": 0,
+          "bottomLeft": 0
+        },
+        "text": {
+          "value": "发货",
+          "style": {
+            "font": {
+              "name": "HarmonyOS Sans SC",
+              "size": 16,
+              "fontWeight": 400,
+              "lineHeight": {
+                "unit": "PIXELS",
+                "value": 28
+              }
+            },
+            "color": {
+              "value": "rgba(51,51,51,1)"
+            }
+          }
+        }
+      },
+      {
+        "name": "￥",
+        "type": "textLayer",
+        "frame": {
+          "left": 104.904296875,
+          "top": 279.884765625,
+          "height": 12,
+          "width": 10
+        },
+        "visible": true,
+        "radius": {
+          "topLeft": 0,
+          "topRight": 0,
+          "bottomRight": 0,
+          "bottomLeft": 0
+        },
+        "text": {
+          "value": "￥",
+          "style": {
+            "font": {
+              "name": "Roboto",
+              "size": 10,
+              "fontWeight": 400,
+              "lineHeight": {
+                "unit": "AUTO"
+              }
+            },
+            "color": {
+              "value": "rgba(223,19,19,1)"
+            }
+          }
+        }
+      },
+      {
+        "name": "Rectangle 727",
+        "type": "shapeLayer",
+        "frame": {
+          "left": 16,
+          "top": 92.567626953125,
+          "height": 220.8759765625,
+          "width": 343
+        },
+        "visible": true,
+        "radius": {
+          "topLeft": 0,
+          "topRight": 0,
+          "bottomRight": 0,
+          "bottomLeft": 0
+        },
+        "paths": [
+          {
+            "type": "rect",
+            "radius": {
+              "topLeft": 8,
+              "topRight": 8,
+              "bottomLeft": 8,
+              "bottomRight": 8
+            }
+          }
+        ],
+        "style": {
+          "fills": [
+            {
+              "type": "color",
+              "color": {
+                "value": "rgba(255,255,255,1)"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
